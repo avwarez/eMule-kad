@@ -32,7 +32,7 @@ their client on the eMule forum.
 #include "opcodes.h"
 #include "preferences.h"
 #include "emule.h"
-#include "emuledlg.h"
+#include "kademlia/kademlia/Events.h"
 #include "serverlist.h"
 #include "Log.h"
 #include "MD5Sum.h"
@@ -178,13 +178,13 @@ void CPrefs::SetFirewalled()
 	//current state to prevent false reports during the recheck.
 	m_bLastFirewallState = (m_uFirewalled < 2);
 	m_uFirewalled = 0;
-	theApp.emuledlg->ShowConnectionState();
+	Events().OnStateChanged(GetState());
 }
 
 void CPrefs::IncFirewalled()
 {
 	++m_uFirewalled;
-	theApp.emuledlg->ShowConnectionState();
+	Events().OnStateChanged(GetState());
 }
 
 bool CPrefs::GetFindBuddy()

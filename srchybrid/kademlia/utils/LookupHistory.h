@@ -20,6 +20,8 @@
 
 namespace Kademlia
 {
+	struct KadLookupHistory;
+
 	class CLookupHistory
 	{
 	public:
@@ -61,6 +63,7 @@ namespace Kademlia
 		CArray<SLookupHistoryEntry*>& GetHistoryEntries()	{ return m_aIntrestingHistoryEntries; }
 		const CStringW& GetGUIName() const					{ return m_sGUIName; }
 		uint32	GetType() const								{ return m_uType; }
+		void	GetSnapshot(KadLookupHistory &out) const;
 
 	protected:
 		int		GetInterestingContactIdxByID(const CUInt128 &uContact) const;

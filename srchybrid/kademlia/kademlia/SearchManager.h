@@ -46,6 +46,7 @@ namespace Kademlia
 		friend class CKademlia;
 	public:
 		static bool IsSearching(uint32 uSearchID);
+		static const CSearch* GetSearchByHandle(uint32 uHandle);
 		static void StopSearch(uint32 uSearchID, bool bDelayDelete);
 		static void StopAllSearches();
 		// Search for a particular file

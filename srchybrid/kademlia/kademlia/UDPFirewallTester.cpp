@@ -22,7 +22,7 @@
 #include "kademlia/routing/RoutingZone.h"
 #include "Log.h"
 #include "emule.h"
-#include "emuledlg.h"
+#include "kademlia/kademlia/Events.h"
 #include "opcodes.h"
 #include "clientlist.h"
 
@@ -64,7 +64,7 @@ bool CUDPFirewallTester::IsFirewalledUDP(bool bLastStateIfTesting)
 		{
 			DebugLogWarning(_T("Firewall UDP Tester: Timeout: Setting UDP status to firewalled after being unable to get results for 6 minutes"));
 			m_bTimedOut = true;
-			theApp.emuledlg->ShowConnectionState();
+			Events().OnStateChanged(GetState());
 		}
 	}
 	return (bLastStateIfTesting && bCheckingFW) ? m_bFirewalledLastStateUDP : m_bFirewalledUDP;
@@ -97,7 +97,7 @@ void CUDPFirewallTester::SetUDPFWCheckResult(bool bSucceeded, bool bTestCancelle
 				// intern ports and change the setting.
 				CKademlia::GetPrefs()->SetUseExternKadPort(false);
 				DebugLog(_T("Corrected UDP firewall result: Using open internal (%u) instead open external port"), nIncomingPort);
-				theApp.emuledlg->ShowConnectionState();
+				Events().OnStateChanged(GetState());
 				return;
 			}
 			if (ucs.bAnswered) {
@@ -145,7 +145,7 @@ void CUDPFirewallTester::SetUDPFWCheckResult(bool bSucceeded, bool bTestCancelle
 				CKademlia::GetPrefs()->SetUseExternKadPort(true);
 				DebugLog(_T("New KAD Firewall state (UDP): Open, using extern port"));
 			}
-			theApp.emuledlg->ShowConnectionState();
+			Events().OnStateChanged(GetState());
 
 			return;
 		}
@@ -156,7 +156,7 @@ void CUDPFirewallTester::SetUDPFWCheckResult(bool bSucceeded, bool bTestCancelle
 			m_bFirewalledUDP = true;
 			m_bIsFWVerifiedUDP = true;
 			m_bTimedOut = false;
-			theApp.emuledlg->ShowConnectionState();
+			Events().OnStateChanged(GetState());
 			m_liPossibleTestClients.RemoveAll(); // clear list, keep used clients list through
 			CSearchManager::CancelNodeFWCheckUDPSearch(); // cancel firewall node searches if any are still active
 			return;

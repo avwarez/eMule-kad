@@ -31,12 +31,11 @@ their client on the eMule forum.
 #include "stdafx.h"
 #include "emule.h"
 #include "preferences.h"
-#include "emuledlg.h"
+#include "kademlia/kademlia/Events.h"
 #include "opcodes.h"
 #include "Log.h"
 #include "MD4.h"
 #include "StringConversion.h"
-#include "kademliawnd.h"
 #include "kademlia/kademlia/Kademlia.h"
 #include "kademlia/kademlia/defines.h"
 #include "kademlia/kademlia/Prefs.h"
@@ -216,7 +215,7 @@ void CKademlia::Process()
 	if (tNow >= m_tNextFirewallCheck)
 		RecheckFirewalled();
 	if (m_tNextUPnPCheck != 0 && tNow >= m_tNextUPnPCheck) {
-		theApp.emuledlg->RefreshUPnP();
+		Events().OnPortMappingRefreshRequested();
 		m_tNextUPnPCheck = 0; // will be reset on firewall check
 	}
 
@@ -280,7 +279,7 @@ void CKademlia::Process()
 		if (uMaxUsers != m_pInstance->m_pPrefs->GetKademliaUsers()) {
 			m_pInstance->m_pPrefs->SetKademliaUsers(uMaxUsers);
 			m_pInstance->m_pPrefs->SetKademliaFiles();
-			theApp.emuledlg->ShowUserCount();
+			Events().OnUserCountChanged(GetState());
 		}
 	}
 
@@ -293,7 +292,7 @@ void CKademlia::Process()
 			const CUInt128 uTargetID(pContact->GetClientID());
 			m_pInstance->m_pUDPListener->Bootstrap(pContact->GetIPAddress(), pContact->GetUDPPort(), pContact->GetVersion(), &uTargetID);
 			delete pContact;
-			theApp.emuledlg->kademliawnd->StartUpdateContacts();
+			Events().OnContactsBulkEnd();
 		} else if (m_bootstrapping) {
 			// failed to bootstrap
 			m_bootstrapping = false;
@@ -627,12 +626,12 @@ bool CKademlia::IsRunningInLANMode()
 			if (GetRoutingZone()->HasOnlyLANNodes()) {
 				if (!m_bLANMode) {
 					m_bLANMode = true;
-					theApp.emuledlg->ShowConnectionState();
+					Events().OnStateChanged(GetState());
 					DebugLog(_T("Kademlia: Activating LAN Mode"));
 				}
 			} else if (m_bLANMode) {
 				m_bLANMode = false;
-				theApp.emuledlg->ShowConnectionState();
+				Events().OnStateChanged(GetState());
 			}
 		}
 	}

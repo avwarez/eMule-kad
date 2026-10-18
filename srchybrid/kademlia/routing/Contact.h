@@ -39,6 +39,8 @@ their client on the eMule forum.
 
 namespace Kademlia
 {
+	struct KadContactInfo;
+
 	class CContact
 	{
 		friend class CRoutingBin;
@@ -96,6 +98,8 @@ namespace Kademlia
 		// bootstrapcontact functions only used for GUI
 		bool	IsBootstrapContact() const				{ return m_bBootstrapContact; }
 		void	SetBootstrapContact()					{ m_bBootstrapContact = true; }
+
+		KadContactInfo GetInfo() const;
 
 	private:
 		void	InitContact(); // Common var initialization goes here

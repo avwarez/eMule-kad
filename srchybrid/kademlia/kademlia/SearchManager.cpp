@@ -32,10 +32,7 @@ their client on the eMule forum.
 #include "resource.h"
 #include "Log.h"
 #include "emule.h"
-#include "emuledlg.h"
-#include "kademliawnd.h"
-#include "KadSearchListCtrl.h"
-#include "SearchDlg.h"
+#include "kademlia/kademlia/Events.h"
 #include "kademlia/kademlia/SearchManager.h"
 #include "kademlia/kademlia/Search.h"
 #include "kademlia/kademlia/Tag.h"
@@ -72,6 +69,15 @@ bool CSearchManager::IsSearching(uint32 uSearchID)
 			return true;
 
 	return false;
+}
+
+const CSearch* CSearchManager::GetSearchByHandle(uint32 uHandle)
+{
+	for (SearchMap::const_iterator itSearchMap = m_mapSearches.begin(); itSearchMap != m_mapSearches.end(); ++itSearchMap)
+		if (itSearchMap->second->m_uHandle == uHandle)
+			return itSearchMap->second;
+
+	return NULL;
 }
 
 void CSearchManager::StopSearch(uint32 uSearchID, bool bDelayDelete)
@@ -282,9 +288,7 @@ void CSearchManager::JumpStart()
 		case CSearch::KEYWORD:
 			if (tNow >= pSearch->m_tCreated + SEARCHKEYWORD_LIFETIME) {
 				bDel = true;
-				// Tell GUI that search ended
-				if (theApp.emuledlg->searchwnd)
-					theApp.emuledlg->searchwnd->CancelKadSearch(pSearch->GetSearchID());
+				Events().OnKeywordSearchEnded(pSearch->GetSearchID());
 			} else if (pSearch->GetAnswers() >= SEARCHKEYWORD_TOTAL || tNow >= pSearch->m_tCreated + SEARCHKEYWORD_LIFETIME - SEC(20))
 				bStop = true;
 			break;
@@ -417,7 +421,7 @@ void CSearchManager::ProcessPublishResult(const CUInt128 &uTarget, const uint8 u
 	// Inc the number of answers.
 	++pSearch->m_uAnswers;
 	// Update the search for the GUI
-	theApp.emuledlg->kademliawnd->searchList->SearchRef(pSearch);
+	Events().OnSearchUpdated(pSearch->GetInfo());
 }
 
 void CSearchManager::ProcessResponse(const CUInt128 &uTarget, uint32 uFromIP, uint16 uFromPort, ContactArray &rlistResults)

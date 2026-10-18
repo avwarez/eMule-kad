@@ -18,6 +18,7 @@
 #include "kademlia/kademlia/search.h"
 #include "kademlia/routing/contact.h"
 #include "kademlia/utils/LookupHistory.h"
+#include "kademlia/kademlia/Events.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -147,4 +148,31 @@ void CLookupHistory::ContactRespondedKeyword(uint32 uContactIP, uint16 uContactU
 			return;
 		}
 	//ASSERT(0);
+}
+
+void CLookupHistory::GetSnapshot(KadLookupHistory &out) const
+{
+	out.type = m_uType;
+	out.name = ToUtf8(m_sGUIName);
+	out.stopped = m_bSearchStopped;
+	out.entries.clear();
+	out.entries.reserve((size_t)m_aIntrestingHistoryEntries.GetCount());
+	for (INT_PTR i = 0; i < m_aIntrestingHistoryEntries.GetCount(); ++i) {
+		const SLookupHistoryEntry &src = *m_aIntrestingHistoryEntries[i];
+		KadLookupEntry entry;
+		entry.contactID = ToKadID(src.m_uContactID);
+		entry.distance = ToKadID(src.m_uDistance);
+		for (INT_PTR j = 0; j < src.m_liReceivedFromIdx.GetCount(); ++j)
+			entry.receivedFrom.push_back(src.m_liReceivedFromIdx[j]);
+		entry.askedContactsTick = src.m_dwAskedContactsTime;
+		entry.respondedContact = src.m_uRespondedContact;
+		entry.askedSearchItemTick = src.m_dwAskedSearchItemTime;
+		entry.respondedSearchItem = src.m_uRespondedSearchItem;
+		entry.ip = src.m_uIP;
+		entry.port = src.m_uPort;
+		entry.contactVersion = src.m_byContactVersion;
+		entry.providedCloser = src.m_bProvidedCloser;
+		entry.forcedInteresting = src.m_bForcedInteresting;
+		out.entries.push_back(std::move(entry));
+	}
 }

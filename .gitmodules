@@ -1,0 +1,6 @@
+[submodule "cryptopp"]
+	path = cryptopp
+	url = https://github.com/weidai11/cryptopp.git
+[submodule "zlib"]
+	path = zlib
+	url = https://github.com/madler/zlib.git

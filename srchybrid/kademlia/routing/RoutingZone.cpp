@@ -47,10 +47,8 @@ their client on the eMule forum.
 
 #include "stdafx.h"
 #include "emule.h"
-#include "emuledlg.h"
+#include "kademlia/kademlia/Events.h"
 #include "ipfilter.h"
-#include "KadContactListCtrl.h"
-#include "kademliawnd.h"
 #include "Log.h"
 #include "Opcodes.h"
 #include "kademlia/kademlia/Defines.h"
@@ -138,7 +136,7 @@ CRoutingZone::~CRoutingZone()
 	// Root node is processed first so that we can write our contact list and delete all branches.
 	if (m_pSuperZone == NULL && !m_sFilename.IsEmpty()) {
 		// Hide contacts in the GUI
-		theApp.emuledlg->kademliawnd->StopUpdateContacts();
+		Events().OnContactsBulkBegin();
 #ifndef _BOOTSTRAPNODESDAT
 		WriteFile();
 #else
@@ -156,7 +154,7 @@ CRoutingZone::~CRoutingZone()
 
 	// All branches are deleted, show the contact list in the GUI.
 	if (m_pSuperZone == NULL)
-		theApp.emuledlg->kademliawnd->StartUpdateContacts();
+		Events().OnContactsBulkEnd();
 }
 
 void CRoutingZone::ReadFile(const CString &strSpecialNodesdate)
@@ -198,7 +196,7 @@ void CRoutingZone::ReadFile(const CString &strSpecialNodesdate)
 		}
 		if (uNumContacts != 0 && uNumContacts * 25ull <= (file.GetLength() - file.GetPosition())) {
 			// Hide contact list in the GUI
-			theApp.emuledlg->kademliawnd->StopUpdateContacts();
+			Events().OnContactsBulkBegin();
 
 			bool bDoHaveVerifiedContacts = false;
 			uint32 uValidContacts = 0;
@@ -258,7 +256,7 @@ void CRoutingZone::ReadFile(const CString &strSpecialNodesdate)
 		DebugLogError(_T("CFileException in CRoutingZone::readFile"));
 	}
 	// Show contact list in GUI
-	theApp.emuledlg->kademliawnd->StartUpdateContacts();
+	Events().OnContactsBulkEnd();
 }
 
 void CRoutingZone::ReadBootstrapNodesDat(CFileDataIO &file)
@@ -323,14 +321,14 @@ void CRoutingZone::ReadBootstrapNodesDat(CFileDataIO &file)
 			}
 		}
 
-		theApp.emuledlg->kademliawnd->StopUpdateContacts();
-		theApp.emuledlg->kademliawnd->SetBootstrapListMode();
+		Events().OnContactsBulkBegin();
+		Events().OnBootstrapListShown();
 		for (POSITION pos = CKademlia::s_liBootstrapList.GetHeadPosition(); pos != NULL;) {
 			CContact *pContact = CKademlia::s_liBootstrapList.GetNext(pos);
 			pContact->SetGuiRefs(true);
-			theApp.emuledlg->kademliawnd->ContactAdd(pContact);
+			Events().OnContactAdded(pContact->GetInfo());
 		}
-		theApp.emuledlg->kademliawnd->StartUpdateContacts();
+		Events().OnContactsBulkEnd();
 
 		AddLogLine(false, GetResString(IDS_KADCONTACTSREAD), CKademlia::s_liBootstrapList.GetCount());
 		DebugLog(_T("Loaded Bootstrap nodes.dat, selected %u out of %u valid contacts"), CKademlia::s_liBootstrapList.GetCount(), uValidContacts);
@@ -519,7 +517,7 @@ bool CRoutingZone::Add(CContact *pContact, bool &bUpdate, bool &bOutIPVerified)
 					ASSERT(!pContact->IsIpVerified()); // legacy kad2 nodes should be unable to verify their IP on a HELLO
 					bOutIPVerified = pContactUpdate->IsIpVerified();
 					m_pBin->SetAlive(pContactUpdate);
-					theApp.emuledlg->kademliawnd->ContactRef(pContactUpdate);
+					Events().OnContactUpdated(pContactUpdate->GetInfo());
 					DEBUG_ONLY(AddDebugLogLine(DLP_VERYLOW, false, _T("Updated kad contact refresh timer only for legacy kad2 contact (%s, %u)")
 						, (LPCTSTR)ipstr(pContactUpdate->GetNetIP()), pContactUpdate->GetVersion()));
 				} else {
@@ -556,7 +554,7 @@ bool CRoutingZone::Add(CContact *pContact, bool &bUpdate, bool &bOutIPVerified)
 						pContactUpdate->SetIpVerified(pContact->IsIpVerified());
 					bOutIPVerified = pContactUpdate->IsIpVerified();
 					m_pBin->SetAlive(pContactUpdate);
-					theApp.emuledlg->kademliawnd->ContactRef(pContactUpdate);
+					Events().OnContactUpdated(pContactUpdate->GetInfo());
 					if (pContact->GetReceivedHelloPacket())
 						pContactUpdate->SetReceivedHelloPacket();
 				} else
@@ -570,9 +568,9 @@ bool CRoutingZone::Add(CContact *pContact, bool &bUpdate, bool &bOutIPVerified)
 		bUpdate = false;
 		// This bin is not full, so add the new contact.
 		if (m_pBin->AddContact(pContact)) {
-			// Add was successful, add to the GUI and let the contact know it's listed in the GUI.
-			if (theApp.emuledlg->kademliawnd->ContactAdd(pContact))
-				pContact->SetGuiRefs(true);
+			// Add was successful, announce it and let the contact know its removal has to be announced too.
+			Events().OnContactAdded(pContact->GetInfo());
+			pContact->SetGuiRefs(true);
 			return true;
 		}
 		return false;
@@ -912,7 +910,7 @@ bool CRoutingZone::VerifyContact(const CUInt128 &uID, uint32 uIP) const
 		DebugLogWarning(_T("Kad: VerifyContact: Sender already verified (sender: %s)"), (LPCTSTR)ipstr(htonl(uIP)));
 	else {
 		pContact->SetIpVerified(true);
-		theApp.emuledlg->kademliawnd->ContactRef(pContact);
+		Events().OnContactUpdated(pContact->GetInfo());
 	}
 	return true;
 }

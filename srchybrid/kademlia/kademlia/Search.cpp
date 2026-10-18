@@ -33,9 +33,7 @@ their client on the eMule forum.
 #include "ClientList.h"
 #include "DownloadQueue.h"
 #include "emule.h"
-#include "emuledlg.h"
-#include "kademliawnd.h"
-#include "KadSearchListCtrl.h"
+#include "kademlia/kademlia/Events.h"
 #include "Log.h"
 #include "Packets.h"
 #include "partfile.h"
@@ -68,6 +66,8 @@ using namespace Kademlia;
 
 //void DebugSend(LPCTSTR pszMsg, uint32 uIP, uint16 uUDPPort);
 
+uint32 CSearch::s_uNextHandle = 0;
+
 CSearch::CSearch()
 	: m_uTarget()
 	, m_uClosestDistantFound()
@@ -85,10 +85,11 @@ CSearch::CSearch()
 	, m_uTotalLoadResponses()
 	, m_uSearchID(_UI32_MAX)
 	, m_uSearchTermsDataSize()
+	, m_uHandle(++s_uNextHandle)
 	, m_bStoping()
 {
 	m_pLookupHistory = new CLookupHistory();
-	theApp.emuledlg->kademliawnd->searchList->SearchAdd(this);
+	Events().OnSearchAdded(GetInfo());
 }
 
 CSearch::~CSearch()
@@ -117,14 +118,13 @@ CSearch::~CSearch()
 	}
 
 	// Remove search from GUI
-	theApp.emuledlg->kademliawnd->searchList->SearchRem(this);
+	Events().OnSearchRemoved(m_uHandle);
 
 	// delete and dereference search history (will delete itself if not used by the GUI)
 	if (m_pLookupHistory != NULL) {
 		m_pLookupHistory->SetSearchDeleted();
 		m_pLookupHistory = NULL;
 	}
-	theApp.emuledlg->kademliawnd->UpdateSearchGraph(NULL);
 
 	// Check if a source search is currently being done.
 	CPartFile *pPartFile = theApp.downloadqueue->GetFileByKadFileSearchID(GetSearchID());
@@ -173,7 +173,7 @@ void CSearch::Go()
 
 		for (ContactMap::const_iterator itPossibleMap = m_mapPossible.begin(); itPossibleMap != m_mapPossible.end(); ++itPossibleMap)
 			m_pLookupHistory->ContactReceived(itPossibleMap->second, NULL, itPossibleMap->first, false);
-		theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+		Events().OnLookupHistoryChanged(m_uHandle);
 	}
 	if (!m_mapPossible.empty()) {
 		//Lets keep our contact list entries in mind to dec the inUse flag.
@@ -198,7 +198,7 @@ void CSearch::Go()
 		}
 	}
 	// Update search for the GUI
-	theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+	Events().OnSearchUpdated(GetInfo());
 }
 
 //If we allow about a 15 sec delay before deleting, we won't miss a lot of delayed returning packets.
@@ -251,10 +251,10 @@ void CSearch::PrepareToStop()
 	m_bStoping = true;
 
 	//Update search within GUI.
-	theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+	Events().OnSearchUpdated(GetInfo());
 	if (m_pLookupHistory != NULL) {
 		m_pLookupHistory->SetSearchStopped();
-		theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+		Events().OnLookupHistoryChanged(m_uHandle);
 	}
 }
 
@@ -358,7 +358,7 @@ void CSearch::ProcessResponse(uint32 uFromIP, uint16 uFromPort, const ContactArr
 				uDistance.Xor(m_uTarget);
 				m_pLookupHistory->ContactReceived(*itResultsList, pFromContact, uDistance, uDistance < uFromDistance, true);
 			}
-			theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+			Events().OnLookupHistoryChanged(m_uHandle);
 			// We clear the possible list to force the search to stop.
 			// We do this so the user has time to see the visualised results.
 			m_mapPossible.clear();
@@ -366,11 +366,11 @@ void CSearch::ProcessResponse(uint32 uFromIP, uint16 uFromPort, const ContactArr
 			// Results are not passed to the search and not much point in changing this,
 			// but make sure we show on the graph that the contact responded
 			m_pLookupHistory->ContactReceived(NULL, pFromContact, CUInt128(), true);
-			theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+			Events().OnLookupHistoryChanged(m_uHandle);
 		}
 
 		// Update search in the GUI.
-		theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+		Events().OnSearchUpdated(GetInfo());
 		return;
 	}
 
@@ -395,7 +395,7 @@ void CSearch::ProcessResponse(uint32 uFromIP, uint16 uFromPort, const ContactArr
 				bProvidedCloserContacts = true;
 
 			m_pLookupHistory->ContactReceived(pContact, pFromContact, uDistance, bProvidedCloserContacts);
-			theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+			Events().OnLookupHistoryChanged(m_uHandle);
 
 			// Ignore this contact if already know or tried it.
 			if (m_mapPossible.find(uDistance) != m_mapPossible.end() || m_mapTried.find(uDistance) != m_mapTried.end())
@@ -461,7 +461,7 @@ void CSearch::ProcessResponse(uint32 uFromIP, uint16 uFromPort, const ContactArr
 		// Complete node search, just increase the answers and update the GUI
 		if (m_uType == NODECOMPLETE || m_uType == NODESPECIAL) {
 			++m_uAnswers;
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 	} catch (...) {
 		AddDebugLogLine(false, _T("Exception in CSearch::ProcessResponse"));
@@ -483,7 +483,7 @@ void CSearch::StorePacket()
 	if (uFromDistance.Get32BitChunk(0) > SEARCHTOLERANCE && !IsLANIP(pFromContact->GetNetIP()))
 		return;
 	m_pLookupHistory->ContactAskedKeyword(pFromContact);
-	theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+	Events().OnLookupHistoryChanged(m_uHandle);
 	// What kind of search are we doing?
 	switch (m_uType) {
 	case FILE:
@@ -521,7 +521,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uTotalRequestAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 		break;
 	case KEYWORD:
@@ -571,7 +571,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uTotalRequestAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 		break;
 	case NOTES:
@@ -608,7 +608,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uTotalRequestAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 		break;
 	case STOREFILE:
@@ -696,7 +696,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uTotalRequestAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 			// Delete all tags.
 			deleteTagListEntries(listTag);
 		}
@@ -755,7 +755,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uTotalRequestAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 		break;
 	case STORENOTES:
@@ -803,7 +803,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uTotalRequestAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 			// Delete all tags.
 			deleteTagListEntries(listTag);
 		}
@@ -839,7 +839,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 		break;
 	case FINDSOURCE:
@@ -873,7 +873,7 @@ void CSearch::StorePacket()
 			// Inc total request answers
 			++m_uAnswers;
 			// Update search in the GUI
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 		}
 		break;
 	case NODESPECIAL:
@@ -903,10 +903,10 @@ void CSearch::ProcessResult(const CUInt128 &uAnswer, TagList &rlistInfo, uint32 
 	}
 	if (iAnswerBefore < m_uAnswers) {
 		m_pLookupHistory->ContactRespondedKeyword(uFromIP, uFromPort, m_uAnswers - iAnswerBefore);
-		theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+		Events().OnLookupHistoryChanged(m_uHandle);
 	}
 	// Update search for the GUI
-	theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+	Events().OnSearchUpdated(GetInfo());
 }
 
 void CSearch::ProcessResultFile(const CUInt128 &uAnswer, TagList &rlistInfo)
@@ -971,7 +971,7 @@ void CSearch::ProcessResultFile(const CUInt128 &uAnswer, TagList &rlistInfo)
 	case 5:
 	case 6:
 		++m_uAnswers;
-		theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+		Events().OnSearchUpdated(GetInfo());
 		theApp.downloadqueue->KademliaSearchFile(m_uSearchID, &uAnswer, &uBuddy, uType, uIP, uTCPPort, uUDPPort, uBuddyIP, uBuddyPort, byCryptOptions);
 		break;
 	}
@@ -1048,7 +1048,7 @@ void CSearch::ProcessResultNotes(const CUInt128 &uAnswer, TagList &rlistInfo)
 		// Inc the number of answers.
 		++m_uAnswers;
 		// Update the search in the GUI
-		theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+		Events().OnSearchUpdated(GetInfo());
 	}
 }
 
@@ -1215,7 +1215,7 @@ void CSearch::ProcessResultKeyword(const CUInt128 &uAnswer, TagList &rlistInfo, 
 	// Inc the number of answers.
 	++m_uAnswers;
 	// Update the search in the GUI
-	theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+	Events().OnSearchUpdated(GetInfo());
 	// Send the keyword to search list for processing.
 	// This method is still legacy from the multithreaded Kad, maybe this can be changed for better handling.
 	theApp.searchlist->KademliaSearchKeyword(m_uSearchID, &uAnswer, sName, uSize, sType
@@ -1261,11 +1261,11 @@ void CSearch::SendFindValue(CContact *pContact, bool bReAskMore)
 			// Inc the number of packets sent.
 			++m_uKadPacketSent;
 			// Update the search for the GUI.
-			theApp.emuledlg->kademliawnd->searchList->SearchRef(this);
+			Events().OnSearchUpdated(GetInfo());
 
 			if (pContact->GetVersion() >= KADEMLIA_VERSION2_47a) {
 				m_pLookupHistory->ContactAskedKad(pContact);
-				theApp.emuledlg->kademliawnd->UpdateSearchGraph(m_pLookupHistory);
+				Events().OnLookupHistoryChanged(m_uHandle);
 				if (pContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
 					CUInt128 uClientID = pContact->GetClientID();
 					CKademlia::GetUDPListener()->SendPacket(fileIO, KADEMLIA2_REQ, pContact->GetIPAddress(), pContact->GetUDPPort(), pContact->GetUDPKey(), &uClientID);
@@ -1569,4 +1569,23 @@ uint8 CSearch::GetRequestContactCount() const
 		ASSERT(0);
 	}
 	return 0;
+}
+
+KadSearchInfo CSearch::GetInfo() const
+{
+	KadSearchInfo info;
+	info.handle = m_uHandle;
+	info.searchID = m_uSearchID;
+	info.type = m_uType;
+	info.typeName = ToUtf8(GetTypeName(m_uType));
+	info.name = ToUtf8(GetGUIName());
+	info.target = ToKadID(m_uTarget);
+	info.answers = GetAnswers();
+	info.packetsSent = m_uKadPacketSent;
+	info.requestAnswers = m_uTotalRequestAnswers;
+	info.nodeLoad = GetNodeLoad();
+	info.nodeLoadResponses = m_uTotalLoadResponses;
+	info.nodeLoadTotal = m_uTotalLoad;
+	info.stopping = m_bStoping;
+	return info;
 }

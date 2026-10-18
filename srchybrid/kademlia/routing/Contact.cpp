@@ -36,8 +36,7 @@ their client on the eMule forum.
 
 #include "stdafx.h"
 #include "emule.h"
-#include "emuledlg.h"
-#include "kademliawnd.h"
+#include "kademlia/kademlia/Events.h"
 #include "OpCodes.h"
 #include "kademlia/kademlia/Kademlia.h"
 #include "kademlia/kademlia/Prefs.h"
@@ -55,7 +54,7 @@ using namespace Kademlia;
 CContact::~CContact()
 {
 	if (m_bGuiRefs)
-		theApp.emuledlg->kademliawnd->ContactRem(this);
+		Events().OnContactRemoved(ToKadID(m_uClientID));
 }
 
 CContact::CContact()
@@ -190,7 +189,7 @@ void CContact::CheckingType()
 		m_tLastTypeSet = time(NULL);
 		m_tExpires = m_tLastTypeSet + MIN2S(2);
 		++m_byType;
-		theApp.emuledlg->kademliawnd->ContactRef(this);
+		Events().OnContactUpdated(GetInfo());
 	}
 }
 
@@ -210,7 +209,7 @@ void CContact::UpdateType()
 		m_byType = 0;
 		m_tExpires = tNow + HR2S(2);
 	}
-	theApp.emuledlg->kademliawnd->ContactRef(this);
+	Events().OnContactUpdated(GetInfo());
 }
 
 time_t CContact::GetLastSeen() const
@@ -241,4 +240,21 @@ void CContact::DecUse()
 		--m_uInUse;
 	else
 		ASSERT(0);
+}
+
+KadContactInfo CContact::GetInfo() const
+{
+	KadContactInfo info;
+	info.id = ToKadID(m_uClientID);
+	info.distance = ToKadID(m_uDistance);
+	info.ip = m_uIp;
+	info.udpPort = m_uUdpPort;
+	info.tcpPort = m_uTcpPort;
+	info.type = m_byType;
+	info.version = m_uVersion;
+	info.created = m_tCreated;
+	info.expires = m_tExpires;
+	info.ipVerified = m_bIPVerified;
+	info.bootstrap = m_bBootstrapContact;
+	return info;
 }

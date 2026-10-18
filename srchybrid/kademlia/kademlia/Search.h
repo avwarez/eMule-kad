@@ -41,12 +41,14 @@ namespace Kademlia
 	class CByteIO;
 	class CKadClientSearcher;
 	class CLookupHistory;
+	struct KadSearchInfo;
 
 	class CSearch
 	{
 		friend class CSearchManager;
 	public:
 		uint32	GetSearchID() const									{ return m_uSearchID; }
+		uint32	GetHandle() const									{ return m_uHandle; }
 		uint32	GetSearchType() const								{ return m_uType; }
 		void	SetSearchType(uint32 uVal);
 		void	SetTargetID(const CUInt128 &uVal)					{ m_uTarget = uVal; }
@@ -71,6 +73,7 @@ namespace Kademlia
 		void	SetNodeSpecialSearchRequester(CKadClientSearcher *pNew)	{ pNodeSpecialSearchRequester = pNew; }
 
 		CLookupHistory* GetLookupHistory() const					{ return m_pLookupHistory; }
+		KadSearchInfo GetInfo() const;
 		enum
 		{
 			NODE,
@@ -130,7 +133,10 @@ namespace Kademlia
 		uint32 m_uTotalLoadResponses;
 		uint32 m_uSearchID;
 		uint32 m_uSearchTermsDataSize;
+		const uint32 m_uHandle; // unique for every search object, identifies it in events
 		bool m_bStoping;
+
+		static uint32 s_uNextHandle;
 	};
 }
 

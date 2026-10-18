@@ -34,9 +34,8 @@ their client on the eMule forum.
 #include "clientlist.h"
 #include "ClientUDPSocket.h"
 #include "emule.h"
-#include "emuledlg.h"
+#include "kademlia/kademlia/Events.h"
 #include "ipfilter.h"
-#include "KadContactListCtrl.h"
 #include "listensocket.h"
 #include "Log.h"
 #include "opcodes.h"
@@ -226,7 +225,7 @@ void CKademliaUDPListener::ProcessPacket(const byte *pbyData, uint32 uLenData, u
 	CKademlia::GetPrefs()->SetLastContact();
 	CUDPFirewallTester::Connected();
 	if (bCurCon != CKademlia::GetPrefs()->HasHadContact())
-		theApp.emuledlg->ShowConnectionState();
+		Events().OnStateChanged(GetState());
 
 	uint8 byOpcode = pbyData[1];
 	switch (InTrackListIsAllowedPacket(uIP, byOpcode, bValidReceiverKey)) {
@@ -1650,7 +1649,7 @@ void CKademliaUDPListener::Process_KADEMLIA_FIREWALLED_RES(const byte *pbyPacket
 	//Update con state only if something changes.
 	if (CKademlia::GetPrefs()->GetIPAddress() != uFirewalledIP) {
 		CKademlia::GetPrefs()->SetIPAddress(uFirewalledIP);
-		theApp.emuledlg->ShowConnectionState();
+		Events().OnStateChanged(GetState());
 	}
 	CKademlia::GetPrefs()->IncRecheckIP();
 }
@@ -1832,7 +1831,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PONG(const byte *pbyPacketData, uin
 		if (CUDPFirewallTester::IsFWCheckUDPRunning())
 			CUDPFirewallTester::QueryNextClient();
 	}
-	theApp.emuledlg->ShowConnectionState();
+	Events().OnStateChanged(GetState());
 }
 
 void CKademliaUDPListener::Process_KADEMLIA2_FIREWALLUDP(const byte *pbyPacketData, uint32 uLenPacket, uint32 uIP, const CKadUDPKey& /*senderUDPKey*/)
