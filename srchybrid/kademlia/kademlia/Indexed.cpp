@@ -26,7 +26,7 @@ Any mod that changes anything within the Kademlia side will not be allowed to ad
 their client on the eMule forum.
 */
 #include "stdafx.h"
-#include "Preferences.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "Log.h"
 #include "kademlia/kademlia/Entry.h"
 #include "kademlia/kademlia/Indexed.h"
@@ -68,7 +68,7 @@ CIndexed::CIndexed()
 	m_mapNotes.InitHashTable(1031);
 	m_mapLoad.InitHashTable(1031);
 	m_mapSources.InitHashTable(1031);
-	const CString &confdir(thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
+	const CString &confdir(AppConfigDir());
 	m_sSourceFileName.Format(_T("%s") _T("src_index.dat"), (LPCTSTR)confdir);
 	m_sKeyFileName.Format(_T("%s") _T("key_index.dat"), (LPCTSTR)confdir);
 	m_sLoadFileName.Format(_T("%s") _T("load_index.dat"), (LPCTSTR)confdir);
@@ -654,7 +654,7 @@ void CIndexed::SendValidKeywordResult(const CUInt128 &uKeyID, const SSearchTerm 
 								CKademlia::GetUDPListener()->SendPacket(byPacket, uLen, uIP, uPort, senderUDPKey, NULL);
 								byIO.Seek(uRewind);
 
-								if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+								if (AppPrefs().debugClientKadUDPLevel > 0)
 									DebugSend("KADEMLIA2_SEARCH_RES", uIP, uPort);
 								DEBUG_ONLY(DebugLog(_T("Sent %i keyword search results in one packet to avoid fragmentation"), iUnsentCount));
 								iUnsentCount = 0;
@@ -674,7 +674,7 @@ void CIndexed::SendValidKeywordResult(const CUInt128 &uKeyID, const SSearchTerm 
 		if (iUnsentCount > 0) {
 			uint32 uLen = (uint32)(sizeof byPacket - byIO.GetAvailable());
 			PokeUInt16(pbyCountPos, (uint16)iUnsentCount);
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA2_SEARCH_RES", uIP, uPort);
 
 			CKademlia::GetUDPListener()->SendPacket(byPacket, uLen, uIP, uPort, senderUDPKey, NULL);
@@ -730,7 +730,7 @@ void CIndexed::SendValidSourceResult(const CUInt128 &uKeyID, uint32 uIP, uint16 
 						CKademlia::GetUDPListener()->SendPacket(byPacket, uLen, uIP, uPort, senderUDPKey, NULL);
 						byIO.Reset();
 						byIO.WriteByte(OP_KADEMLIAHEADER);
-						if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+						if (AppPrefs().debugClientKadUDPLevel > 0)
 							DebugSend("KADEMLIA2_SEARCH_RES", uIP, uPort);
 						byIO.WriteByte(KADEMLIA2_SEARCH_RES);
 						byIO.WriteUInt128(Kademlia::CKademlia::GetPrefs()->GetKadID());
@@ -750,7 +750,7 @@ void CIndexed::SendValidSourceResult(const CUInt128 &uKeyID, uint32 uIP, uint16 
 		if (iUnsentCount > 0) {
 			uint32 uLen = (uint32)(sizeof byPacket - byIO.GetAvailable());
 			PokeUInt16(pbyCountPos, (uint16)iUnsentCount);
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA2_SEARCH_RES", uIP, uPort);
 
 			CKademlia::GetUDPListener()->SendPacket(byPacket, uLen, uIP, uPort, senderUDPKey, NULL);
@@ -802,7 +802,7 @@ void CIndexed::SendValidNoteResult(const CUInt128 &uKeyID, uint32 uIP, uint16 uP
 							CKademlia::GetUDPListener()->SendPacket(byPacket, uLen, uIP, uPort, senderUDPKey, NULL);
 							byIO.Reset();
 							byIO.WriteByte(OP_KADEMLIAHEADER);
-							if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+							if (AppPrefs().debugClientKadUDPLevel > 0)
 								DebugSend("KADEMLIA2_SEARCH_RES", uIP, uPort);
 							byIO.WriteByte(KADEMLIA2_SEARCH_RES);
 							byIO.WriteUInt128(Kademlia::CKademlia::GetPrefs()->GetKadID());
@@ -821,7 +821,7 @@ void CIndexed::SendValidNoteResult(const CUInt128 &uKeyID, uint32 uIP, uint16 uP
 			if (iUnsentCount > 0) {
 				uint32 uLen = (uint32)(sizeof byPacket - byIO.GetAvailable());
 				PokeUInt16(pbyCountPos, (uint16)iUnsentCount);
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_SEARCH_RES", uIP, uPort);
 
 				CKademlia::GetUDPListener()->SendPacket(byPacket, uLen, uIP, uPort, senderUDPKey, NULL);

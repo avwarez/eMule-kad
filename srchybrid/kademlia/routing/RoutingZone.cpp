@@ -48,6 +48,7 @@ their client on the eMule forum.
 #include "stdafx.h"
 #include "emule.h"
 #include "kademlia/kademlia/Events.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "ipfilter.h"
 #include "Log.h"
 #include "Opcodes.h"
@@ -80,7 +81,7 @@ CRoutingZone::CRoutingZone()
 	// Set our KadID for creating the contact tree
 	CKademlia::GetPrefs()->GetKadID(uMe);
 	// Set the nodes file name.
-	m_sFilename.Format(_T("%s") _T("nodes.dat"), (LPCTSTR)thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
+	m_sFilename.Format(_T("%s") _T("nodes.dat"), (LPCTSTR)AppConfigDir());
 	// Init our root node.
 	Init(NULL, 0, CUInt128(0ul));
 }
@@ -231,10 +232,10 @@ void CRoutingZone::ReadFile(const CString &strSpecialNodesdate)
 					uint32 uhostIP = htonl(uIP);
 					if (IsGoodIPPort(uhostIP, uUDPPort)) {
 						if (theApp.ipfilter->IsFiltered(uhostIP)) {
-							if (thePrefs.GetLogFilteredIPs())
+							if (AppPrefs().logFilteredIPs)
 								AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u)--read nodes.dat -- - IP filter (%s)"), (LPCTSTR)ipstr(uhostIP), uUDPPort, (LPCTSTR)theApp.ipfilter->GetLastHit());
 						} else if (uUDPPort == 53 && uContactVersion <= KADEMLIA_VERSION5_48a) { /*No DNS Port without encryption*/
-							if (thePrefs.GetLogFilteredIPs())
+							if (AppPrefs().logFilteredIPs)
 								AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u)--read nodes.dat"), (LPCTSTR)ipstr(uhostIP), uUDPPort);
 						} else {
 							// This was not a dead contact, Inc counter if add was successful
@@ -286,10 +287,10 @@ void CRoutingZone::ReadBootstrapNodesDat(CFileDataIO &file)
 			uint32 uhostIP = htonl(uIP);
 			if (IsGoodIPPort(uhostIP, uUDPPort)) {
 				if (theApp.ipfilter->IsFiltered(uhostIP)) {
-					if (thePrefs.GetLogFilteredIPs())
+					if (AppPrefs().logFilteredIPs)
 						AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u)--read known.dat -- - IP filter (%s)"), (LPCTSTR)ipstr(uhostIP), uUDPPort, (LPCTSTR)theApp.ipfilter->GetLastHit());
 				} else if (uUDPPort == 53 && uContactVersion <= KADEMLIA_VERSION5_48a) {
-					if (thePrefs.GetLogFilteredIPs())
+					if (AppPrefs().logFilteredIPs)
 						AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u)--read known.dat"), (LPCTSTR)ipstr(uhostIP), uUDPPort);
 				} else if (uContactVersion > 1) { // only kad2 nodes
 					// we want 50 nodes closest to our own ID (provides randomness between different users and
@@ -454,13 +455,13 @@ bool CRoutingZone::Add(const CUInt128 &uID, uint32 uIP, uint16 uUDPPort, uint16 
 		if (!theApp.ipfilter->IsFiltered(uhostIP) && !(uUDPPort == 53 && uVersion <= KADEMLIA_VERSION5_48a)  /*No DNS Port without encryption*/)
 			return AddUnfiltered(uID, uIP, uUDPPort, uTCPPort, uVersion, cUDPKey, bIPVerified, bUpdate, bFromNodesDat, bFromHello);
 
-		if (thePrefs.GetLogFilteredIPs())
+		if (AppPrefs().logFilteredIPs)
 			if (uUDPPort != 53 || uVersion > KADEMLIA_VERSION5_48a)
 				AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - IP filter (%s)"), (LPCTSTR)ipstr(uhostIP), uUDPPort, (LPCTSTR)theApp.ipfilter->GetLastHit());
 			else
 				AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u)"), (LPCTSTR)ipstr(uhostIP), uUDPPort);
 
-	} else if (thePrefs.GetLogFilteredIPs())
+	} else if (AppPrefs().logFilteredIPs)
 		AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - Bad IP or port"), (LPCTSTR)ipstr(uhostIP), uUDPPort);
 	return false;
 }
@@ -829,7 +830,7 @@ void CRoutingZone::OnSmallTimer()
 	if (pContact != NULL) {
 		pContact->CheckingType();
 		if (pContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA2_HELLO_REQ", pContact->GetIPAddress(), pContact->GetUDPPort());
 			CUInt128 uClientID = pContact->GetClientID();
 			CKademlia::GetUDPListener()->SendMyDetails(KADEMLIA2_HELLO_REQ, pContact->GetIPAddress(), pContact->GetUDPPort(), pContact->GetVersion(), pContact->GetUDPKey(), &uClientID, false);
@@ -845,7 +846,7 @@ void CRoutingZone::OnSmallTimer()
 				CKademlia::GetPrefs()->StatsIncTCPFirewalledNodes(false);
 			}
 		} else if (pContact->GetVersion() >= KADEMLIA_VERSION2_47a) {
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA2_HELLO_REQ", pContact->GetIPAddress(), pContact->GetUDPPort());
 			CKademlia::GetUDPListener()->SendMyDetails(KADEMLIA2_HELLO_REQ, pContact->GetIPAddress(), pContact->GetUDPPort(), pContact->GetVersion(), CKadUDPKey(), NULL, false);
 			ASSERT(CKadUDPKey() == pContact->GetUDPKey());

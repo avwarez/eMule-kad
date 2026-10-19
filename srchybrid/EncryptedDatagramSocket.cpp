@@ -104,8 +104,7 @@
 #include "emule.h"
 #include "md5sum.h"
 #include "Log.h"
-#include "preferences.h"
-#include "Statistics.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "safefile.h"
 #include "kademlia/kademlia/prefs.h"
 #include "kademlia/kademlia/kademlia.h"
@@ -157,7 +156,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(BYTE *pbyBufIn, int nBufLen,
 	*nReceiverVerifyKey = 0;
 	*nSenderVerifyKey = 0;
 
-	if (nResult <= (int)CRYPT_HEADER_SIZE /*|| !thePrefs.IsCryptLayerEnabled()*/)
+	if (nResult <= (int)CRYPT_HEADER_SIZE /*|| !Kademlia::AppPrefs().cryptLayerEnabled*/)
 		return nResult;
 
 	Crypt_Header_Struct &crypt = *reinterpret_cast<Crypt_Header_Struct*>(pbyBufIn);
@@ -207,7 +206,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(BYTE *pbyBufIn, int nBufLen,
 			bKadRecvKeyUsed = false;
 			{
 				uchar achKeyData[23];
-				md4cpy(achKeyData, thePrefs.GetUserHash());
+				md4cpy(achKeyData, Kademlia::AppPrefs().userHash);
 				PokeUInt32(&achKeyData[16], dwIP);
 				achKeyData[20] = MAGICVALUE_UDP;
 				PokeUInt16(&achKeyData[21], crypt.wRandomKeyPart); // random key part sent from remote client
@@ -274,7 +273,6 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(BYTE *pbyBufIn, int nBufLen,
 		}
 		*ppbyBufOut = &pbyBufIn[nBufLen - nResult];
 		RC4Crypt((uchar*)*ppbyBufOut, nResult, &keyReceiveKey);
-		theStats.AddDownDataOverheadCrypt(nBufLen - nResult);
 		//DEBUG_ONLY( DebugLog(_T("Received obfuscated UDP packet from clientIP: %s, Key: %s, RKey: %u, SKey: %u"), (LPCTSTR)ipstr(dwIP), bKad ? (bKadRecvKeyUsed ? _T("ReceiverKey") : _T("NodeID")) : _T("UserHash")
 		//	, nReceiverVerifyKey != 0 ? *nReceiverVerifyKey : 0, nSenderVerifyKey != 0 ? *nSenderVerifyKey : 0) );
 	} else // pass through, let the Receive function do the error handling on this junk
@@ -289,7 +287,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(BYTE *pbyBufIn, int nBufLen,
 uint32 CEncryptedDatagramSocket::EncryptSendClient(uchar *pbyBuf, uint32 nBufLen, const uchar *pachClientHashOrKadID, bool bKad, uint32 nReceiverVerifyKey, uint32 nSenderVerifyKey)
 {
 	ASSERT(theApp.GetPublicIP() != 0 || bKad);
-	ASSERT(thePrefs.IsCryptLayerEnabled());
+	ASSERT(Kademlia::AppPrefs().cryptLayerEnabled);
 	ASSERT(pachClientHashOrKadID != NULL || nReceiverVerifyKey);
 	ASSERT((nReceiverVerifyKey == 0 && nSenderVerifyKey == 0) || bKad);
 
@@ -370,8 +368,6 @@ uint32 CEncryptedDatagramSocket::EncryptSendClient(uchar *pbyBuf, uint32 nBufLen
 	const uint32 nCryptHeaderLen = EncryptOverheadSize(bKad);
 	nBufLen += nCryptHeaderLen;
 	RC4Crypt((uchar*)&crypt.dwMagic, nBufLen - 3, &keySendKey);
-
-	theStats.AddUpDataOverheadCrypt(nCryptHeaderLen);
 	return nBufLen;
 }
 
@@ -380,7 +376,7 @@ int CEncryptedDatagramSocket::DecryptReceivedServer(BYTE *pbyBufIn, int nBufLen,
 	int nResult = nBufLen;
 	*ppbyBufOut = pbyBufIn;
 
-	if (nResult <= (int)CRYPT_HEADER_SIZE || !thePrefs.IsCryptLayerEnabled() || dwBaseKey == 0)
+	if (nResult <= (int)CRYPT_HEADER_SIZE || !Kademlia::AppPrefs().cryptLayerEnabled || dwBaseKey == 0)
 		return nResult;
 
 	Crypt_Header_Struct &crypt = *reinterpret_cast<Crypt_Header_Struct*>(pbyBufIn);
@@ -399,7 +395,7 @@ int CEncryptedDatagramSocket::DecryptReceivedServer(BYTE *pbyBufIn, int nBufLen,
 	RC4Crypt((uchar*)&crypt.dwMagic, 4, &keyReceiveKey);
 	if (crypt.dwMagic == MAGICVALUE_UDP_SYNC_SERVER) {
 		// yup this is an encrypted packet
-		if (thePrefs.GetDebugServerUDPLevel() > 0)
+		if (Kademlia::AppPrefs().debugServerUDPLevel > 0)
 			DEBUG_ONLY(DebugLog(_T("Received obfuscated UDP packet from ServerIP: %s:%u"), (LPCTSTR)ipstr(dbgIP.sin_addr.s_addr), ntohs(dbgIP.sin_port)));
 		RC4Crypt((uchar*)crypt.byPadding, 1, &keyReceiveKey);
 		crypt.byPadding[0] &= 0xf;
@@ -415,8 +411,6 @@ int CEncryptedDatagramSocket::DecryptReceivedServer(BYTE *pbyBufIn, int nBufLen,
 		}
 		*ppbyBufOut = &pbyBufIn[nBufLen - nResult];
 		RC4Crypt((uchar*)*ppbyBufOut, nResult, &keyReceiveKey);
-
-		theStats.AddDownDataOverheadCrypt(nBufLen - nResult);
 	} else // pass through, let the Receive function do the error handling on this junk
 		DebugLogWarning(_T("Obfuscated packet expected, but magicvalue mismatch on UDP packet from Server IP=%s:%u")
 			, (LPCTSTR)ipstr(dbgIP.sin_addr.s_addr), ntohs(dbgIP.sin_port));
@@ -425,7 +419,7 @@ int CEncryptedDatagramSocket::DecryptReceivedServer(BYTE *pbyBufIn, int nBufLen,
 
 uint32 CEncryptedDatagramSocket::EncryptSendServer(uchar *pbyBuf, uint32 nBufLen, uint32 dwBaseKey)
 {
-	ASSERT(thePrefs.IsCryptLayerEnabled());
+	ASSERT(Kademlia::AppPrefs().cryptLayerEnabled);
 	ASSERT(dwBaseKey);
 
 	const uint16 nRandomKeyPart = (uint16)cryptRandomGen.GenerateWord32(0, _UI16_MAX);
@@ -464,8 +458,6 @@ uint32 CEncryptedDatagramSocket::EncryptSendServer(uchar *pbyBuf, uint32 nBufLen
 	const uint32 nCryptHeaderLen = EncryptOverheadSize(false);
 	nBufLen += nCryptHeaderLen;
 	RC4Crypt((uchar*)&crypt.dwMagic, nBufLen - 3, &keySendKey);
-
-	theStats.AddUpDataOverheadCrypt(nCryptHeaderLen);
 	return nBufLen;
 }
 

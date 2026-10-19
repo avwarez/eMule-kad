@@ -43,6 +43,13 @@ namespace Kademlia
 		uint32_t	files;			// estimated files in the network
 	};
 
+	// what a sent packet counts as, for the application's traffic statistics
+	enum class KadTraffic : uint8_t
+	{
+		Kad,			// Kad UDP packet
+		FileRequest		// OP_CALLBACK forwarded to a buddy over TCP
+	};
+
 	struct KadContactInfo
 	{
 		KadID		id;
@@ -124,6 +131,9 @@ namespace Kademlia
 		virtual void OnSearchRemoved(uint32_t handle) {}
 		virtual void OnKeywordSearchEnded(uint32_t searchID) {}	// its lifetime expired; no more results
 		virtual void OnLookupHistoryChanged(uint32_t handle) {}	// pull it with GetLookupHistory()
+
+		// traffic: one call per packet, size as sent (after compression)
+		virtual void OnPacketSent(KadTraffic, uint32_t size) {}
 	};
 
 	// nullptr (the default) turns events off. Not owned.

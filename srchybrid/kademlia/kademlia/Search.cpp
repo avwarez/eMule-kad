@@ -34,6 +34,7 @@ their client on the eMule forum.
 #include "DownloadQueue.h"
 #include "emule.h"
 #include "kademlia/kademlia/Events.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "Log.h"
 #include "Packets.h"
 #include "partfile.h"
@@ -503,7 +504,7 @@ void CSearch::StorePacket()
 				// Start Position range (0x0 to 0x7FFF)
 				m_pfileSearchTerms.WriteUInt16(0);
 				m_pfileSearchTerms.WriteUInt64(pFile->GetFileSize());
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_SEARCH_SOURCE_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
 					CUInt128 uClientID = pFromContact->GetClientID();
@@ -514,7 +515,7 @@ void CSearch::StorePacket()
 				}
 			} else {
 				m_pfileSearchTerms.WriteUInt8(1);
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA_SEARCH_REQ(File)", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CKademlia::GetUDPListener()->SendPacket(m_pfileSearchTerms, KADEMLIA_SEARCH_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), CKadUDPKey(), NULL);
 			}
@@ -554,17 +555,17 @@ void CSearch::StorePacket()
 			}
 
 			if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_SEARCH_KEY_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CUInt128 uClientID = pFromContact->GetClientID();
 				CKademlia::GetUDPListener()->SendPacket(m_pfileSearchTerms, KADEMLIA2_SEARCH_KEY_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), pFromContact->GetUDPKey(), &uClientID);
 			} else if (pFromContact->GetVersion() >= KADEMLIA_VERSION3_47b) {
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_SEARCH_KEY_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CKademlia::GetUDPListener()->SendPacket(m_pfileSearchTerms, KADEMLIA2_SEARCH_KEY_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), CKadUDPKey(), NULL);
 				ASSERT(CKadUDPKey() == pFromContact->GetUDPKey());
 			} else {
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA_SEARCH_REQ(KEYWORD)", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CKademlia::GetUDPListener()->SendPacket(m_pfileSearchTerms, KADEMLIA_SEARCH_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), CKadUDPKey(), NULL);
 			}
@@ -590,7 +591,7 @@ void CSearch::StorePacket()
 					break;
 				}
 				m_pfileSearchTerms.WriteUInt64(pFile->GetFileSize());
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_SEARCH_NOTES_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
 					CUInt128 uClientID = pFromContact->GetClientID();
@@ -601,7 +602,7 @@ void CSearch::StorePacket()
 				}
 			} else {
 				m_pfileSearchTerms.WriteUInt128(CKademlia::GetPrefs()->GetKadID());
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA_SEARCH_NOTES_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CKademlia::GetUDPListener()->SendPacket(m_pfileSearchTerms, KADEMLIA_SEARCH_NOTES_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), CKadUDPKey(), NULL);
 			}
@@ -655,7 +656,7 @@ void CSearch::StorePacket()
 				if (bDirectCallback) {
 					// firewalled, but direct UDP callback is possible without buddies
 					listTag.push_back(new CKadTagUInt(TAG_SOURCETYPE, 6));
-					listTag.push_back(new CKadTagUInt(TAG_SOURCEPORT, thePrefs.GetPort()));
+					listTag.push_back(new CKadTagUInt(TAG_SOURCEPORT, AppPrefs().tcpPort));
 					if (!CKademlia::GetPrefs()->GetUseExternKadPort())
 						listTag.push_back(new CKadTagUInt16(TAG_SOURCEUPORT, CKademlia::GetPrefs()->GetInternKadPort()));
 					if (pFromContact->GetVersion() >= KADEMLIA_VERSION2_47a)
@@ -668,7 +669,7 @@ void CSearch::StorePacket()
 					listTag.push_back(new CKadTagUInt(TAG_SERVERIP, theApp.clientlist->GetBuddy()->GetIP()));
 					listTag.push_back(new CKadTagUInt(TAG_SERVERPORT, theApp.clientlist->GetBuddy()->GetUDPPort()));
 					listTag.push_back(new CKadTagStr(TAG_BUDDYHASH, (CStringW)md4str(uBuddyID.GetData())));
-					listTag.push_back(new CKadTagUInt(TAG_SOURCEPORT, thePrefs.GetPort()));
+					listTag.push_back(new CKadTagUInt(TAG_SOURCEPORT, AppPrefs().tcpPort));
 					if (!CKademlia::GetPrefs()->GetUseExternKadPort())
 						listTag.push_back(new CKadTagUInt16(TAG_SOURCEUPORT, CKademlia::GetPrefs()->GetInternKadPort()));
 
@@ -681,7 +682,7 @@ void CSearch::StorePacket()
 					listTag.push_back(new CKadTagUInt(TAG_SOURCETYPE, 4));
 				else
 					listTag.push_back(new CKadTagUInt(TAG_SOURCETYPE, 1));
-				listTag.push_back(new CKadTagUInt(TAG_SOURCEPORT, thePrefs.GetPort()));
+				listTag.push_back(new CKadTagUInt(TAG_SOURCEPORT, AppPrefs().tcpPort));
 				if (!CKademlia::GetPrefs()->GetUseExternKadPort())
 					listTag.push_back(new CKadTagUInt16(TAG_SOURCEUPORT, CKademlia::GetPrefs()->GetInternKadPort()));
 
@@ -740,12 +741,12 @@ void CSearch::StorePacket()
 
 				// Send packet
 				if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
-					if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+					if (AppPrefs().debugClientKadUDPLevel > 0)
 						DebugSend("KADEMLIA2_PUBLISH_KEY_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 					CUInt128 uClientID = pFromContact->GetClientID();
 					CKademlia::GetUDPListener()->SendPacket(byPacket, (uint32)(sizeof byPacket - byIO.GetAvailable()), KADEMLIA2_PUBLISH_KEY_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), pFromContact->GetUDPKey(), &uClientID);
 				} else if (pFromContact->GetVersion() >= KADEMLIA_VERSION2_47a) {
-					if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+					if (AppPrefs().debugClientKadUDPLevel > 0)
 						DebugSend("KADEMLIA2_PUBLISH_KEY_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 					CKademlia::GetUDPListener()->SendPacket(byPacket, (uint32)(sizeof byPacket - byIO.GetAvailable()), KADEMLIA2_PUBLISH_KEY_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), CKadUDPKey(), NULL);
 					ASSERT(CKadUDPKey() == pFromContact->GetUDPKey());
@@ -789,12 +790,12 @@ void CSearch::StorePacket()
 
 			// Send packet
 			if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_PUBLISH_NOTES_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CUInt128 uClientID = pFromContact->GetClientID();
 				CKademlia::GetUDPListener()->SendPacket(byPacket, (uint32)(sizeof byPacket - byIO.GetAvailable()), KADEMLIA2_PUBLISH_NOTES_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), pFromContact->GetUDPKey(), &uClientID);
 			} else if (pFromContact->GetVersion() >= KADEMLIA_VERSION2_47a) {
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+				if (AppPrefs().debugClientKadUDPLevel > 0)
 					DebugSend("KADEMLIA2_PUBLISH_NOTES_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 				CKademlia::GetUDPListener()->SendPacket(byPacket, (uint32)(sizeof byPacket - byIO.GetAvailable()), KADEMLIA2_PUBLISH_NOTES_REQ, pFromContact->GetIPAddress(), pFromContact->GetUDPPort(), CKadUDPKey(), NULL);
 				ASSERT(CKadUDPKey() == pFromContact->GetUDPKey());
@@ -823,11 +824,11 @@ void CSearch::StorePacket()
 			// Send client hash so they can do a callback.
 			m_pfileSearchTerms.WriteUInt128(CKademlia::GetPrefs()->GetClientHash());
 			// Send client port so they can do a callback
-			m_pfileSearchTerms.WriteUInt16(thePrefs.GetPort());
+			m_pfileSearchTerms.WriteUInt16(AppPrefs().tcpPort);
 
 			// Do a keyword/source search request to this Node.
 			// Send packet
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA_FINDBUDDY_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 			if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
 				CUInt128 uClientID = pFromContact->GetClientID();
@@ -859,9 +860,9 @@ void CSearch::StorePacket()
 			// Currently, we limit they type of callbacks for sources. We must know a file it person has for it to work.
 			fileIO.WriteUInt128(m_listFileIDs[0]);
 			// Send our port so the callback works.
-			fileIO.WriteUInt16(thePrefs.GetPort());
+			fileIO.WriteUInt16(AppPrefs().tcpPort);
 			// Send packet
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA_CALLBACK_REQ", pFromContact->GetIPAddress(), pFromContact->GetUDPPort());
 			if (pFromContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) {
 				CUInt128 uClientID = pFromContact->GetClientID();
@@ -1000,7 +1001,7 @@ void CSearch::ProcessResultNotes(const CUInt128 &uAnswer, TagList &rlistInfo)
 		case FT_FILENAME:
 		case FT_DESCRIPTION:
 			{
-				const CString &cfilter(thePrefs.GetCommentFilter());
+				const CString &cfilter(AppCommentFilter());
 				// Run the filter against the comment as well as against the filename since both values could be misused
 				if (!cfilter.IsEmpty()) {
 					CString strCommentLower(cTag.GetStr());
@@ -1273,7 +1274,7 @@ void CSearch::SendFindValue(CContact *pContact, bool bReAskMore)
 					CKademlia::GetUDPListener()->SendPacket(fileIO, KADEMLIA2_REQ, pContact->GetIPAddress(), pContact->GetUDPPort(), CKadUDPKey(), NULL);
 					ASSERT(CKadUDPKey() == pContact->GetUDPKey());
 				}
-				if (thePrefs.GetDebugClientKadUDPLevel() > 0) {
+				if (AppPrefs().debugClientKadUDPLevel > 0) {
 					LPCSTR pszOp;
 					switch (m_uType) {
 					case NODE:

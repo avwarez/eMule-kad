@@ -30,7 +30,7 @@ their client on the eMule forum.
 
 #include "stdafx.h"
 #include "opcodes.h"
-#include "preferences.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "emule.h"
 #include "kademlia/kademlia/Events.h"
 #include "serverlist.h"
@@ -52,7 +52,7 @@ using namespace Kademlia;
 
 CPrefs::CPrefs()
 {
-	Init(thePrefs.GetMuleDirectory(EMULE_CONFIGDIR) + _T("preferencesKad.dat"));
+	Init(AppConfigDir() + _T("preferencesKad.dat"));
 }
 
 CPrefs::~CPrefs()
@@ -74,7 +74,7 @@ void CPrefs::Init(LPCTSTR szFilename)
 	m_uTotalNotes = 0;
 	m_uTotalStoreNotes = 0;
 	m_bPublish = false;
-	m_uClientHash = CUInt128(thePrefs.GetUserHash());
+	m_uClientHash = CUInt128(AppPrefs().userHash);
 	m_uIP = 0;
 	m_uIPLast = 0;
 	m_bFindBuddy = false;
@@ -243,7 +243,7 @@ void CPrefs::SetRecheckIP()
 
 uint32 CPrefs::GetUDPVerifyKey(uint32 dwTargetIP)
 {
-	uint64 ui64Buffer = thePrefs.GetKadUDPKey();
+	uint64 ui64Buffer = AppPrefs().kadUDPKey;
 	ui64Buffer <<= 32;
 	ui64Buffer |= dwTargetIP;
 	MD5Sum md5((uchar*)&ui64Buffer, 8);
@@ -285,7 +285,7 @@ void CPrefs::SetExternKadPort(uint16 uVal, uint32 uFromIP)
 
 uint16 CPrefs::GetInternKadPort()
 {
-	return thePrefs.GetUDPPort();
+	return AppPrefs().udpPort;
 }
 
 bool CPrefs::FindExternKadPort(bool bReset)

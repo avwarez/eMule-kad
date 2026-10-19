@@ -35,12 +35,12 @@ their client on the eMule forum.
 #include "ClientUDPSocket.h"
 #include "emule.h"
 #include "kademlia/kademlia/Events.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "ipfilter.h"
 #include "listensocket.h"
 #include "Log.h"
 #include "opcodes.h"
 #include "Packets.h"
-#include "Statistics.h"
 #include "updownclient.h"
 #include "KademliaUDPListener.h"
 #include "kademlia/io/ByteIO.h"
@@ -91,7 +91,7 @@ void CKademliaUDPListener::Bootstrap(LPCTSTR szHost, uint16 uUDPPort)
 // Used by Kad1.0 and Kad 2.0
 void CKademliaUDPListener::Bootstrap(uint32 uIP, uint16 uUDPPort, uint8 byKadVersion, const CUInt128 *uCryptTargetID)
 {
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_BOOTSTRAP_REQ", uIP, uUDPPort);
 	CSafeMemFile fileIO(0);
 	SendPacket(fileIO, KADEMLIA2_BOOTSTRAP_REQ, uIP, uUDPPort, CKadUDPKey()
@@ -107,7 +107,7 @@ void CKademliaUDPListener::SendMyDetails(byte byOpcode, uint32 uIP, uint16 uUDPP
 		byteIOResponse.WriteByte(OP_KADEMLIAHEADER);
 		byteIOResponse.WriteByte(byOpcode);
 		byteIOResponse.WriteUInt128(CKademlia::GetPrefs()->GetKadID());
-		byteIOResponse.WriteUInt16(thePrefs.GetPort());
+		byteIOResponse.WriteUInt16(AppPrefs().tcpPort);
 		byteIOResponse.WriteUInt8(KADEMLIA_VERSION);
 
 		// Tag Count.
@@ -160,16 +160,16 @@ void CKademliaUDPListener::FirewalledCheck(uint32 uIP, uint16 uUDPPort, const CK
 	if (byKadVersion > KADEMLIA_VERSION6_49aBETA) {
 		// new Opcode since 0.49a with extended informations to support obfuscated connections properly
 		CSafeMemFile fileIO(19);
-		fileIO.WriteUInt16(thePrefs.GetPort());
+		fileIO.WriteUInt16(AppPrefs().tcpPort);
 		fileIO.WriteUInt128(CKademlia::GetPrefs()->GetClientHash());
 		fileIO.WriteUInt8(CKademlia::GetPrefs()->GetMyConnectOptions(true, false));
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugSend("KADEMLIA_FIREWALLED2_REQ", uIP, uUDPPort);
 		SendPacket(fileIO, KADEMLIA_FIREWALLED2_REQ, uIP, uUDPPort, senderUDPKey, NULL);
 	} else {
 		CSafeMemFile fileIO(2);
-		fileIO.WriteUInt16(thePrefs.GetPort());
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		fileIO.WriteUInt16(AppPrefs().tcpPort);
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugSend("KADEMLIA_FIREWALLED_REQ", uIP, uUDPPort);
 		SendPacket(fileIO, KADEMLIA_FIREWALLED_REQ, uIP, uUDPPort, senderUDPKey, NULL);
 	}
@@ -202,7 +202,7 @@ void CKademliaUDPListener::SendPublishSourcePacket(CContact *pContact, const CUI
 	}
 	byteIO.WriteUInt128(uContactID);
 	byteIO.WriteTagList(tags);
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend(pszOper, pContact->GetIPAddress(), pContact->GetUDPPort());
 	uint32 uLen = (uint32)(sizeof byPacket - byteIO.GetAvailable());
 	if (pContact->GetVersion() >= KADEMLIA_VERSION6_49aBETA) { // obfuscated?
@@ -248,142 +248,142 @@ void CKademliaUDPListener::ProcessPacket(const byte *pbyData, uint32 uLenData, u
 	//CMiscUtils::debugHexDump(pbyPacketData, uLenData);
 	switch (byOpcode) {
 	case KADEMLIA2_BOOTSTRAP_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_BOOTSTRAP_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_BOOTSTRAP_REQ(uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_BOOTSTRAP_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_BOOTSTRAP_RES", uIP, uUDPPort);
 		Process_KADEMLIA2_BOOTSTRAP_RES(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey, bValidReceiverKey);
 		break;
 	case KADEMLIA2_HELLO_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_HELLO_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_HELLO_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey, bValidReceiverKey);
 		break;
 	case KADEMLIA2_HELLO_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_HELLO_RES", uIP, uUDPPort);
 		Process_KADEMLIA2_HELLO_RES(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey, bValidReceiverKey);
 		break;
 	case KADEMLIA2_HELLO_RES_ACK:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_HELLO_RES_ACK", uIP, uUDPPort);
 		Process_KADEMLIA2_HELLO_RES_ACK(pbyPacketData, uLenData, uIP, bValidReceiverKey);
 		break;
 	case KADEMLIA2_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_RES", uIP, uUDPPort);
 		Process_KADEMLIA2_RES(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_SEARCH_NOTES_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_SEARCH_NOTES_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_SEARCH_NOTES_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_SEARCH_KEY_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_SEARCH_KEY_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_SEARCH_KEY_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_SEARCH_SOURCE_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_SEARCH_SOURCE_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_SEARCH_SOURCE_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_SEARCH_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_SEARCH_RES", uIP, uUDPPort);
 		Process_KADEMLIA_SEARCH_RES(pbyPacketData, uLenData, uIP, uUDPPort);
 		break;
 	case KADEMLIA_SEARCH_NOTES_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_SEARCH_NOTES_RES", uIP, uUDPPort);
 		Process_KADEMLIA_SEARCH_NOTES_RES(pbyPacketData, uLenData, uIP, uUDPPort);
 		break;
 	case KADEMLIA2_SEARCH_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_SEARCH_RES", uIP, uUDPPort);
 		Process_KADEMLIA2_SEARCH_RES(pbyPacketData, uLenData, senderUDPKey, uIP, uUDPPort);
 		break;
 	case KADEMLIA2_PUBLISH_KEY_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_PUBLISH_KEY_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_PUBLISH_KEY_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_PUBLISH_SOURCE_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_PUBLISH_SOURCE_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_PUBLISH_SOURCE_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_PUBLISH_NOTES_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_PUBLISH_NOTES_REQ", uIP, uUDPPort);
 		Process_KADEMLIA2_PUBLISH_NOTES_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_PUBLISH_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_PUBLISH_RES", uIP, uUDPPort);
 		Process_KADEMLIA_PUBLISH_RES(pbyPacketData, uLenData, uIP);
 		break;
 	case KADEMLIA2_PUBLISH_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_PUBLISH_RES", uIP, uUDPPort);
 		Process_KADEMLIA2_PUBLISH_RES(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_FIREWALLED_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_FIREWALLED_REQ", uIP, uUDPPort);
 		Process_KADEMLIA_FIREWALLED_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_FIREWALLED2_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_FIREWALLED2_REQ", uIP, uUDPPort);
 		Process_KADEMLIA_FIREWALLED2_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_FIREWALLED_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_FIREWALLED_RES", uIP, uUDPPort);
 		Process_KADEMLIA_FIREWALLED_RES(pbyPacketData, uLenData, uIP, senderUDPKey);
 		break;
 	case KADEMLIA_FIREWALLED_ACK_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_FIREWALLED_ACK_RES", uIP, uUDPPort);
 		Process_KADEMLIA_FIREWALLED_ACK_RES(uLenData);
 		break;
 	case KADEMLIA_FINDBUDDY_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_FINDBUDDY_REQ", uIP, uUDPPort);
 		Process_KADEMLIA_FINDBUDDY_REQ(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_FINDBUDDY_RES:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_FINDBUDDY_RES", uIP, uUDPPort);
 		Process_KADEMLIA_FINDBUDDY_RES(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA_CALLBACK_REQ:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA_CALLBACK_REQ", uIP, uUDPPort);
 		Process_KADEMLIA_CALLBACK_REQ(pbyPacketData, uLenData, uIP, senderUDPKey);
 		break;
 	case KADEMLIA2_PING:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_PING", uIP, uUDPPort);
 		Process_KADEMLIA2_PING(uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_PONG:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_PONG", uIP, uUDPPort);
 		Process_KADEMLIA2_PONG(pbyPacketData, uLenData, uIP, uUDPPort, senderUDPKey);
 		break;
 	case KADEMLIA2_FIREWALLUDP:
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugRecv("KADEMLIA2_FIREWALLUDP", uIP, uUDPPort);
 		Process_KADEMLIA2_FIREWALLUDP(pbyPacketData, uLenData, uIP, senderUDPKey);
 		break;
@@ -495,7 +495,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_BOOTSTRAP_REQ(uint32 uIP, uint16 uU
 	CSafeMemFile fileIO(521);
 
 	fileIO.WriteUInt128(CKademlia::GetPrefs()->GetKadID());
-	fileIO.WriteUInt16(thePrefs.GetPort());
+	fileIO.WriteUInt16(AppPrefs().tcpPort);
 	fileIO.WriteUInt8(KADEMLIA_VERSION);
 
 	// Write packet info
@@ -510,7 +510,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_BOOTSTRAP_REQ(uint32 uIP, uint16 uU
 	}
 
 	// Send response
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_BOOTSTRAP_RES", uIP, uUDPPort);
 
 	SendPacket(fileIO, KADEMLIA2_BOOTSTRAP_RES, uIP, uUDPPort, senderUDPKey, NULL);
@@ -561,7 +561,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_HELLO_REQ(const byte *pbyPacketData
 	CUInt128 uContactID;
 	bool bAddedOrUpdated = AddContact_KADEMLIA2(pbyPacketData, uLenPacket, uIP, uUDPPort, &byContactVersion, senderUDPKey, bValidReceiverKey, true, true, NULL, &uContactID); // might change uUDPPort, bValidReceiverKey
 
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_HELLO_RES", uIP, uUDPPort);
 	// if this contact was added or updated (in other words, not filtered or invalid) to our routing table and did not already sent a valid
 	// receiver key or is already verified in the routing table, we request an additional ACK package to complete a three-way-handshake and
@@ -647,7 +647,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_HELLO_RES(const byte *pbyPacketData
 			CUInt128 uID(CKademlia::GetPrefs()->GetKadID());
 			fileIO.WriteUInt128(uID);
 			fileIO.WriteUInt8(0); // no tags at this time
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA2_HELLO_RES_ACK", uIP, uUDPPort);
 			SendPacket(fileIO, KADEMLIA2_HELLO_RES_ACK, uIP, uUDPPort, senderUDPKey, NULL);
 			//DEBUG_ONLY( AddDebugLogLine(DLP_LOW, false, _T("Sent HELLO_RES_ACK to %s"), (LPCTSTR)ipstr(htonl(uIP))) );
@@ -715,7 +715,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_REQ(const byte *pbyPacketData, uint
 			fileIO2.WriteUInt8(pContact->GetVersion()); //<- Kad Version inserted to allow backward compatibility.
 		}
 
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugSendF("KADEMLIA2_RES", uIP, uUDPPort, _T("Count=%u"), uCount);
 
 		SendPacket(fileIO2, KADEMLIA2_RES, uIP, uUDPPort, senderUDPKey, NULL);
@@ -738,7 +738,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_RES(const byte *pbyPacketData, uint
 	/*if(CKademlia::GetPrefs()->GetRecheckIP())
 	{
 		FirewalledCheck(uIP, uUDPPort, senderUDPKey);
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugSend("KADEMLIA2_HELLO_REQ", uIP, uUDPPort);
 		SendMyDetails(KADEMLIA2_HELLO_REQ, uIP, uUDPPort, KADEMLIA_VERSION, senderUDPKey, NULL);
 	}*/
@@ -815,11 +815,11 @@ void CKademliaUDPListener::Process_KADEMLIA2_RES(const byte *pbyPacketData, uint
 								delete pTemp;
 							}
 						}
-					} else if (!(uUDPPortResult == 53 && uVersion <= KADEMLIA_VERSION5_48a) && thePrefs.GetLogFilteredIPs())
+					} else if (!(uUDPPortResult == 53 && uVersion <= KADEMLIA_VERSION5_48a) && AppPrefs().logFilteredIPs)
 						AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - IP filter (%s)"), (LPCTSTR)ipstr(uhostIPResult), uUDPPortResult, (LPCTSTR)theApp.ipfilter->GetLastHit());
-					else if (thePrefs.GetLogFilteredIPs())
+					else if (AppPrefs().logFilteredIPs)
 						AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - Bad port (Kad2_Res)"), (LPCTSTR)ipstr(uhostIPResult), uUDPPortResult);
-				} else if (thePrefs.GetLogFilteredIPs())
+				} else if (AppPrefs().logFilteredIPs)
 					AddDebugLogLine(false, _T("Ignored kad contact (IP=%s) - Bad IP"), (LPCTSTR)ipstr(uhostIPResult));
 			}
 		}
@@ -1060,7 +1060,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_SEARCH_KEY_REQ(const byte *pbyPacke
 	if (bRestrictive) {
 		try {
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
-			s_pstrDbgSearchExpr = (thePrefs.GetDebugServerSearchesLevel() > 0) ? new CString() : NULL;
+			s_pstrDbgSearchExpr = (AppPrefs().debugServerSearchesLevel > 0) ? new CString() : NULL;
 #endif
 			pSearchTerms = CreateSearchExpressionTree(fileIO, 0);
 			if (s_pstrDbgSearchExpr) {
@@ -1187,7 +1187,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_KEY_REQ(const byte *pbyPack
 	if (uDistance.Get32BitChunk(0) > SEARCHTOLERANCE && !IsLANIP(ntohl(uIP)))
 		return;
 
-	bool bDbgInfo = (thePrefs.GetDebugClientKadUDPLevel() > 0);
+	bool bDbgInfo = (AppPrefs().debugClientKadUDPLevel > 0);
 	uint8 uLoad = 0;
 	CUInt128 uTarget;
 	for (unsigned uCount = byteIO.ReadUInt16(); uCount > 0; --uCount) {
@@ -1262,7 +1262,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_KEY_REQ(const byte *pbyPack
 	CSafeMemFile fileIO2(17);
 	fileIO2.WriteUInt128(uFile);
 	fileIO2.WriteUInt8(uLoad);
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_PUBLISH_RES", uIP, uUDPPort);
 	SendPacket(fileIO2, KADEMLIA2_PUBLISH_RES, uIP, uUDPPort, senderUDPKey, NULL);
 }
@@ -1285,7 +1285,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_SOURCE_REQ(const byte *pbyP
 	if (uDistance.Get32BitChunk(0) > SEARCHTOLERANCE && !IsLANIP(ntohl(uIP)))
 		return;
 
-	bool bDbgInfo = (thePrefs.GetDebugClientKadUDPLevel() > 0);
+	bool bDbgInfo = (AppPrefs().debugClientKadUDPLevel > 0);
 	uint8 uLoad = 0;
 	CUInt128 uTarget;
 	byteIO.ReadUInt128(uTarget);
@@ -1340,14 +1340,14 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_SOURCE_REQ(const byte *pbyP
 					LPCTSTR p = NULL;
 					uint32 buddyip = (uint32)pTag->GetInt();
 					//if (!IsGoodIP(buddyip)) {
-					//	if (thePrefs.GetLogFilteredIPs())
+					//	if (AppPrefs().logFilteredIPs)
 					//		p = _T("bad");
 					//} else
 					if (theApp.ipfilter->IsFiltered(buddyip)) {
-						if (thePrefs.GetLogFilteredIPs())
+						if (AppPrefs().logFilteredIPs)
 							p = _T("IP-filtered");
 					} else if (theApp.clientlist->IsBannedClient(buddyip)) {
-						if (thePrefs.GetLogBannedClients())
+						if (AppPrefs().logBannedClients)
 							p = _T("banned");
 					} else {
 						pEntry->AddTag(pTag);
@@ -1383,7 +1383,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_SOURCE_REQ(const byte *pbyP
 		CSafeMemFile fileIO2(17);
 		fileIO2.WriteUInt128(uFile);
 		fileIO2.WriteUInt8(uLoad);
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugSend("KADEMLIA2_PUBLISH_RES", uIP, uUDPPort);
 		SendPacket(fileIO2, KADEMLIA2_PUBLISH_RES, uIP, uUDPPort, senderUDPKey, NULL);
 	} else
@@ -1438,7 +1438,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_RES(const byte *pbyPacketDa
 		bool bRequestACK = (byOptions & 0x01) > 0;
 		if (bRequestACK && !senderUDPKey.IsEmpty()) {
 			DEBUG_ONLY(DebugLogWarning(_T("KADEMLIA2_PUBLISH_RES_ACK requested (%s)"), (LPCTSTR)ipstr(htonl(uIP))));
-			if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+			if (AppPrefs().debugClientKadUDPLevel > 0)
 				DebugSend("KADEMLIA2_PUBLISH_RES_ACK", uIP, uUDPPort);
 			SendNullPacket(KADEMLIA2_PUBLISH_RES_ACK, uIP, uUDPPort, senderUDPKey, NULL);
 		}
@@ -1558,7 +1558,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PUBLISH_NOTES_REQ(const byte *pbyPa
 		CSafeMemFile fileIO2(17);
 		fileIO2.WriteUInt128(uTarget);
 		fileIO2.WriteUInt8(uLoad);
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0)
 			DebugSend("KADEMLIA2_PUBLISH_RES", uIP, uUDPPort);
 
 		SendPacket(fileIO2, KADEMLIA2_PUBLISH_RES, uIP, uUDPPort, senderUDPKey, NULL);
@@ -1589,7 +1589,7 @@ void CKademliaUDPListener::Process_KADEMLIA_FIREWALLED_REQ(const byte *pbyPacket
 	// Send response
 	CSafeMemFile fileIO2(4);
 	fileIO2.WriteUInt32(uIP);
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA_FIREWALLED_RES", uIP, uUDPPort);
 
 	SendPacket(fileIO2, KADEMLIA_FIREWALLED_RES, uIP, uUDPPort, senderUDPKey, NULL);
@@ -1622,7 +1622,7 @@ void CKademliaUDPListener::Process_KADEMLIA_FIREWALLED2_REQ(const byte *pbyPacke
 	// Send response
 	CSafeMemFile fileIO2(4);
 	fileIO2.WriteUInt32(uIP);
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA_FIREWALLED_RES", uIP, uUDPPort);
 
 	SendPacket(fileIO2, KADEMLIA_FIREWALLED_RES, uIP, uUDPPort, senderUDPKey, NULL);
@@ -1704,10 +1704,10 @@ void CKademliaUDPListener::Process_KADEMLIA_FINDBUDDY_REQ(const byte *pbyPacketD
 	CSafeMemFile fileIO2(34);
 	fileIO2.WriteUInt128(BuddyID);
 	fileIO2.WriteUInt128(CKademlia::GetPrefs()->GetClientHash());
-	fileIO2.WriteUInt16(thePrefs.GetPort());
+	fileIO2.WriteUInt16(AppPrefs().tcpPort);
 	if (!senderUDPKey.IsEmpty()) // remove check for later versions
 		fileIO2.WriteUInt8(CKademlia::GetPrefs()->GetMyConnectOptions(true, false)); // new since 0.49a, old mules will ignore it (hopefully ;) )
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA_FINDBUDDY_RES", uIP, uUDPPort);
 
 	SendPacket(fileIO2, KADEMLIA_FINDBUDDY_RES, uIP, uUDPPort, senderUDPKey, NULL);
@@ -1781,9 +1781,9 @@ void CKademliaUDPListener::Process_KADEMLIA_CALLBACK_REQ(const byte *pbyPacketDa
 		fileIO2.WriteUInt32(uIP);
 		fileIO2.WriteUInt16(uTCP);
 		Packet *pPacket = new Packet(fileIO2, OP_EMULEPROT, OP_CALLBACK);
-		if (thePrefs.GetDebugClientKadUDPLevel() > 0 || thePrefs.GetDebugClientTCPLevel() > 0)
+		if (AppPrefs().debugClientKadUDPLevel > 0 || AppPrefs().debugClientTCPLevel > 0)
 			DebugSend("OP_CALLBACK", pBuddy);
-		theStats.AddUpDataOverheadFileRequest(pPacket->size);
+		Events().OnPacketSent(KadTraffic::FileRequest, pPacket->size);
 		pBuddy->socket->SendPacket(pPacket);
 	}
 }
@@ -1793,7 +1793,7 @@ void CKademliaUDPListener::Process_KADEMLIA2_PING(uint32 uIP, uint16 uUDPPort, c
 // can be used just as PING, currently it is however only used to determine ones external port
 	CSafeMemFile fileIO2(2);
 	fileIO2.WriteUInt16(uUDPPort);
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_PONG", uIP, uUDPPort);
 	SendPacket(fileIO2, KADEMLIA2_PONG, uIP, uUDPPort, senderUDPKey, NULL);
 }
@@ -1872,7 +1872,7 @@ void CKademliaUDPListener::SendPacket(const byte *pbyData, uint32 uLenData, uint
 	pPacket->size = uLenData - 2;
 	if (uLenData > 200)
 		pPacket->PackPacket();
-	theStats.AddUpDataOverheadKad(pPacket->size);
+	Events().OnPacketSent(KadTraffic::Kad, pPacket->size);
 	AddTrackedOutPacket(uDestinationHost, pbyData[1]);
 	theApp.clientudp->SendPacket(pPacket, ntohl(uDestinationHost), uDestinationPort, true
 		, (uCryptTargetID != NULL) ? uCryptTargetID->GetData() : NULL
@@ -1888,7 +1888,7 @@ void CKademliaUDPListener::SendPacket(const byte *pbyData, uint32 uLenData, byte
 	pPacket->size = uLenData;
 	if (uLenData > 200)
 		pPacket->PackPacket();
-	theStats.AddUpDataOverheadKad(pPacket->size);
+	Events().OnPacketSent(KadTraffic::Kad, pPacket->size);
 	AddTrackedOutPacket(uDestinationHost, byOpcode);
 	theApp.clientudp->SendPacket(pPacket, ntohl(uDestinationHost), uDestinationPort, true
 		, (uCryptTargetID != NULL) ? uCryptTargetID->GetData() : NULL
@@ -1901,7 +1901,7 @@ void CKademliaUDPListener::SendPacket(CSafeMemFile &pbyData, byte byOpcode, uint
 	pPacket->opcode = byOpcode;
 	if (pPacket->size > 200)
 		pPacket->PackPacket();
-	theStats.AddUpDataOverheadKad(pPacket->size);
+	Events().OnPacketSent(KadTraffic::Kad, pPacket->size);
 	AddTrackedOutPacket(uDestinationHost, byOpcode);
 	theApp.clientudp->SendPacket(pPacket, htonl(uDestinationHost), uDestinationPort, true
 		, (uCryptTargetID != NULL) ? uCryptTargetID->GetData() : NULL
@@ -1915,7 +1915,7 @@ bool CKademliaUDPListener::FindNodeIDByIP(CKadClientSearcher *pRequester, uint32
 	// we will drop support for Kad1 soon, so don't bother sending two packets in case we don't know if kad2 is supported
 	// (if we know that it's not, this function isn't called in the first place)
 	DebugLog(_T("FindNodeIDByIP: Requesting NodeID from %s by sending KADEMLIA2_HELLO_REQ"), (LPCTSTR)ipstr(htonl(dwIP)));
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_HELLO_REQ", dwIP, nUDPPort);
 	SendMyDetails(KADEMLIA2_HELLO_REQ, dwIP, nUDPPort, KADEMLIA_VERSION, CKadUDPKey(), NULL, false); // todo: we send this unobfuscated, which is not perfect, see if this can be avoided in the future
 	FetchNodeID_Struct sRequest = {dwIP, nTCPPort, ::GetTickCount() + SEC2MS(60), pRequester};
@@ -1968,7 +1968,7 @@ void CKademliaUDPListener::SendLegacyChallenge(uint32 uIP, uint16 uUDPPort, cons
 	fileIO.WriteUInt128(uContactID);
 	// those versions we send those requests to don't support encryption / obfuscation
 	CKademlia::GetUDPListener()->SendPacket(fileIO, KADEMLIA2_REQ, uIP, uUDPPort, CKadUDPKey(), NULL);
-	if (thePrefs.GetDebugClientKadUDPLevel() > 0)
+	if (AppPrefs().debugClientKadUDPLevel > 0)
 		DebugSend("KADEMLIA2_REQ(SendLegacyChallenge)", uIP, uUDPPort);
 	AddLegacyChallenge(uContactID, uChallenge, uIP, KADEMLIA2_REQ);
 }

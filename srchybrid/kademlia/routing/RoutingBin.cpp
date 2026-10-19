@@ -37,7 +37,7 @@ their client on the eMule forum.
 #include "stdafx.h"
 #include "Log.h"
 #include "OtherFunctions.h"
-#include "preferences.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "kademlia/kademlia/Defines.h"
 #include "kademlia/routing/RoutingBin.h"
 #include "kademlia/routing/Contact.h"
@@ -100,7 +100,7 @@ bool CRoutingBin::AddContact(CContact *pContact)
 	// no more than 2 IPs from the same /24 block in one bin, except if it's a LAN IP
 	// (if we don't accept LAN IPs, they already have been filtered before)
 	if (uSameSubnets >= 2 && !IsLANIP(pContact->GetNetIP())) {
-		if (thePrefs.GetLogFilteredIPs())
+		if (AppPrefs().logFilteredIPs)
 			AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - too many contacts with the same subnet in RoutingBin"), (LPCTSTR)ipstr(pContact->GetNetIP()), pContact->GetUDPPort());
 		return false;
 	}
@@ -304,7 +304,7 @@ bool CRoutingBin::ChangeContactIPAddress(CContact *pContact, uint32 uNewIP)
 	if (!s_mapGlobalContactIPs.Lookup(uNewIP, nSameIPCount))
 		nSameIPCount = 0;
 	if (nSameIPCount >= MAX_CONTACTS_IP) {
-		if (thePrefs.GetLogFilteredIPs())
+		if (AppPrefs().logFilteredIPs)
 			AddDebugLogLine(false, _T("Rejected kad contact ip change on update (old IP=%s, requested IP=%s) - too many contacts with the same IP (global)"), (LPCTSTR)ipstr(pContact->GetNetIP()), (LPCTSTR)ipstr(htonl(uNewIP)));
 		return false;
 	}
@@ -316,7 +316,7 @@ bool CRoutingBin::ChangeContactIPAddress(CContact *pContact, uint32 uNewIP)
 		if (!s_mapGlobalContactSubnets.Lookup(uNewIP & ~0xFF, nSameSubnetGlobalCount))
 			nSameSubnetGlobalCount = 0;
 		if (nSameSubnetGlobalCount >= MAX_CONTACTS_SUBNET && !IsLANIP(ntohl(uNewIP))) {
-			if (thePrefs.GetLogFilteredIPs())
+			if (AppPrefs().logFilteredIPs)
 				AddDebugLogLine(false, _T("Rejected kad contact ip change on update (old IP=%s, requested IP=%s) - too many contacts with the same Subnet (global)"), (LPCTSTR)ipstr(pContact->GetNetIP()), (LPCTSTR)ipstr(htonl(uNewIP)));
 			return false;
 		}
@@ -329,7 +329,7 @@ bool CRoutingBin::ChangeContactIPAddress(CContact *pContact, uint32 uNewIP)
 		// no more than 2 IPs from the same /24 block in one bin, except if it's a LAN IP
 		// (if we don't accept LAN IPs, they already have been filtered before)
 		if (uSameSubnet >= 2 && !IsLANIP(ntohl(uNewIP))) {
-			if (thePrefs.GetLogFilteredIPs())
+			if (AppPrefs().logFilteredIPs)
 				AddDebugLogLine(false, _T("Rejected kad contact ip change on update (old IP=%s, requested IP=%s) - too many contacts with the same Subnet (local)"), (LPCTSTR)ipstr(pContact->GetNetIP()), (LPCTSTR)ipstr(htonl(uNewIP)));
 			return false;
 		}
@@ -384,7 +384,7 @@ bool CRoutingBin::CheckGlobalIPLimits(uint32 uIP, uint16 uPort, bool bLog)
 	if (!s_mapGlobalContactIPs.Lookup(uIP, nSameIPCount))
 		nSameIPCount = 0;
 	if (nSameIPCount >= MAX_CONTACTS_IP) {
-		if (bLog && thePrefs.GetLogFilteredIPs())
+		if (bLog && AppPrefs().logFilteredIPs)
 			AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - too many contacts with the same IP (global)"), (LPCTSTR)ipstr(htonl(uIP)), uPort);
 		return false;
 	}
@@ -394,7 +394,7 @@ bool CRoutingBin::CheckGlobalIPLimits(uint32 uIP, uint16 uPort, bool bLog)
 	if (!s_mapGlobalContactSubnets.Lookup(uIP & ~0xFF, nSameSubnetGlobalCount))
 		nSameSubnetGlobalCount = 0;
 	if (nSameSubnetGlobalCount >= MAX_CONTACTS_SUBNET && !IsLANIP(ntohl(uIP))) {
-		if (bLog && thePrefs.GetLogFilteredIPs())
+		if (bLog && AppPrefs().logFilteredIPs)
 			AddDebugLogLine(false, _T("Ignored kad contact (IP=%s:%u) - too many contacts with the same Subnet (global)"), (LPCTSTR)ipstr(htonl(uIP)), uPort);
 		return false;
 	}

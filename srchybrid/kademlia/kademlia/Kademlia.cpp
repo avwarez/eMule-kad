@@ -30,7 +30,7 @@ their client on the eMule forum.
 
 #include "stdafx.h"
 #include "emule.h"
-#include "preferences.h"
+#include "kademlia/kademlia/AppPrefs.h"
 #include "kademlia/kademlia/Events.h"
 #include "opcodes.h"
 #include "Log.h"
@@ -613,7 +613,7 @@ uint32 CKademlia::CalculateKadUsersNew()
 
 bool CKademlia::IsRunningInLANMode()
 {
-	if (thePrefs.FilterLANIPs() || !IsRunning() || GetRoutingZone() == NULL)
+	if (AppPrefs().filterLANIPs || !IsRunning() || GetRoutingZone() == NULL)
 		return false;
 	if (time(NULL) >= m_tLANModeCheck + 10) {
 		m_tLANModeCheck = time(NULL);
